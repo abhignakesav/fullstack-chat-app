@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
 
-export const useChatStore = create((set, get) => ({
+const initialState = {
   messages: [],
   users: [],
   groups: [],
@@ -12,16 +12,29 @@ export const useChatStore = create((set, get) => ({
   isUsersLoading: false,
   isMessagesLoading: false,
   isGroupsLoading: false,
+};
+
+export const useChatStore = create((set, get) => ({
+  ...initialState,
 
   getUsers: async () => {
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/users");
+      console.log("Users response:", res.data);
+      
       if (res?.data) {
         // Ensure each user has required fields
-        const validUsers = res.data.filter(user => user && user._id);
+        const validUsers = res.data.filter(user => 
+          user && 
+          user._id && 
+          typeof user._id === 'string' &&
+          typeof user.fullName === 'string'
+        );
+        console.log("Valid users:", validUsers);
         set({ users: validUsers });
       } else {
+        console.log("No users data in response");
         set({ users: [] });
       }
     } catch (error) {
@@ -65,16 +78,21 @@ export const useChatStore = create((set, get) => ({
         res = await axiosInstance.get(`/messages/group/${chatId}`);
       }
       
+      console.log("Messages response:", res?.data);
+      
       if (res?.data) {
         // Ensure each message has required fields
         const validMessages = res.data.filter(message => 
           message && 
           message._id && 
           message.senderId && 
-          message.createdAt
+          message.createdAt &&
+          typeof message.senderId === 'string'
         );
+        console.log("Valid messages:", validMessages);
         set({ messages: validMessages });
       } else {
+        console.log("No messages data in response");
         set({ messages: [] });
       }
     } catch (error) {
@@ -199,7 +217,15 @@ export const useChatStore = create((set, get) => ({
     socket.off("newMessage");
   },
 
-  setSelectedChat: (chat, chatType) => set({ selectedChat: chat, selectedChatType: chatType, messages: [] }),
+  setSelectedChat: (chat, chatType) => {
+    console.log("Setting selected chat:", chat, chatType);
+    if (!chat || !chatType) {
+      console.log("Invalid chat or chat type");
+      set({ selectedChat: null, selectedChatType: null, messages: [] });
+      return;
+    }
+    set({ selectedChat: chat, selectedChatType: chatType, messages: [] });
+  },
 
   deleteMessage: async (messageId) => {
     try {

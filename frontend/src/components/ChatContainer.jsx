@@ -143,17 +143,42 @@ const ChatContainer = () => {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages && messages.length > 0 ? (
           messages.map((message) => {
-            if (!message || !message.senderId) return null;
+            // Debug logs
+            console.log("Message:", message);
+            console.log("Auth User:", authUser);
+            console.log("Users:", users);
+
+            if (!message || !message.senderId) {
+              console.log("Invalid message:", message);
+              return null;
+            }
             
             const isMine = message.senderId === authUser?._id;
+            console.log("Is mine:", isMine);
+            
             const senderUser = users?.find(u => u?._id === message.senderId);
+            console.log("Sender user:", senderUser);
+            
+            // Ensure we have a valid user object
             const displayUser = senderUser || authUser;
+            console.log("Display user:", displayUser);
             
-            if (!displayUser || !displayUser._id) return null;
-            
-            const profilePic = isMine 
-              ? (authUser?.profilePic || "/avatar.png")
-              : (displayUser?.profilePic || "/avatar.png");
+            if (!displayUser || !displayUser._id) {
+              console.log("Invalid display user:", displayUser);
+              return null;
+            }
+
+            // Get profile pic with fallback
+            let profilePic = "/avatar.png"; // Default fallback
+            try {
+              if (isMine && authUser?.profilePic) {
+                profilePic = authUser.profilePic;
+              } else if (displayUser?.profilePic) {
+                profilePic = displayUser.profilePic;
+              }
+            } catch (error) {
+              console.error("Error getting profile pic:", error);
+            }
             
             return (
               <div
@@ -166,6 +191,7 @@ const ChatContainer = () => {
                       src={profilePic}
                       alt="profile pic"
                       onError={(e) => {
+                        console.log("Image load error, using fallback");
                         e.target.onerror = null;
                         e.target.src = "/avatar.png";
                       }}
