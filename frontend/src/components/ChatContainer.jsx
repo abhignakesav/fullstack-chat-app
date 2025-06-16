@@ -144,28 +144,28 @@ const ChatContainer = () => {
         {messages && messages.length > 0 ? (
           messages.map((message) => {
             // Debug logs
-            console.log("Message:", message);
-            console.log("Auth User:", authUser);
-            console.log("Users:", users);
+            console.log("Processing Message:", message);
+            console.log("Current Auth User:", authUser);
+            console.log("Current Users Array:", users);
 
             if (!message || !message.senderId) {
-              console.log("Invalid message:", message);
+              console.log("Skipping invalid message:", message);
               return null;
             }
             
             const isMine = message.senderId === authUser?._id;
-            console.log("Is mine:", isMine);
+            console.log("Is message mine?", isMine);
             
             const senderUser = users?.find(u => u?._id === message.senderId);
-            console.log("Sender user:", senderUser);
+            console.log("Found Sender User:", senderUser);
             
-            // Ensure we have a valid user object
+            // Ensure we have a valid user object to display
             const displayUser = senderUser || authUser;
-            console.log("Display user:", displayUser);
+            console.log("Display User (senderUser || authUser):", displayUser);
             
             if (!displayUser || !displayUser._id) {
-              console.log("Invalid display user:", displayUser);
-              return null;
+              console.log("Invalid display user (missing or no _id):", displayUser);
+              return null; // Skip rendering if displayUser is invalid
             }
 
             // Get profile pic with fallback
@@ -173,12 +173,18 @@ const ChatContainer = () => {
             try {
               if (isMine && authUser?.profilePic) {
                 profilePic = authUser.profilePic;
+                console.log("Profile Pic (isMine & authUser.profilePic):", profilePic);
               } else if (displayUser?.profilePic) {
                 profilePic = displayUser.profilePic;
+                console.log("Profile Pic (displayUser.profilePic):", profilePic);
+              } else {
+                console.log("Using default profile pic for:", displayUser);
               }
             } catch (error) {
-              console.error("Error getting profile pic:", error);
+              console.error("Error determining profile pic, using fallback:", error);
+              profilePic = "/avatar.png"; // Ensure fallback on error
             }
+            console.log("Final Profile Pic for message:", message._id, profilePic);
             
             return (
               <div
