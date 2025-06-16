@@ -6,9 +6,12 @@ import { useAuthStore } from "./useAuthStore";
 export const useChatStore = create((set, get) => ({
   messages: [],
   users: [],
-  selectedUser: null,
+  groups: [],
+  selectedChat: null,
+  selectedChatType: null,
   isUsersLoading: false,
   isMessagesLoading: false,
+  isGroupsLoading: false,
 
   getUsers: async () => {
     set({ isUsersLoading: true });
@@ -22,10 +25,27 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  getMessages: async (userId) => {
+  getGroups: async () => {
+    set({ isGroupsLoading: true });
+    try {
+      const res = await axiosInstance.get("/groups");
+      set({ groups: res.data });
+    } catch (error) {
+      toast.error(error.response.data.message);
+    } finally {
+      set({ isGroupsLoading: false });
+    }
+  },
+
+  getMessages: async (chatId, chatType) => {
     set({ isMessagesLoading: true });
     try {
-      const res = await axiosInstance.get(`/messages/${userId}`);
+      let res;
+      if (chatType === "user") {
+        res = await axiosInstance.get(`/messages/${chatId}`);
+      } else if (chatType === "group") {
+        res = await axiosInstance.get(`/messages/group/${chatId}`);
+      }
       set({ messages: res.data });
     } catch (error) {
       toast.error(error.response.data.message);
@@ -34,27 +54,50 @@ export const useChatStore = create((set, get) => ({
     }
   },
   sendMessage: async (messageData) => {
-    const { selectedUser, messages } = get();
+    const { selectedChat, selectedChatType, messages } = get();
+    if (!selectedChat || !selectedChatType) return;
+
     try {
-      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
+      let res;
+      if (selectedChatType === "user") {
+        res = await axiosInstance.post(`/messages/send/${selectedChat._id}`, messageData);
+      } else if (selectedChatType === "group") {
+        res = await axiosInstance.post(`/messages/group/${selectedChat._id}/send`, messageData);
+      }
       set({ messages: [...messages, res.data] });
 
-      // Update users list order in real-time after sending a message
+      // Update users/groups list order in real-time after sending a message
       set((state) => {
-        const otherUserId = selectedUser._id; // The receiver of the sent message
-        const updatedUsers = state.users.map((user) =>
-          user._id === otherUserId
-            ? { ...user, lastMessageTimestamp: new Date(res.data.createdAt) }
-            : user
-        );
+        if (selectedChatType === "user") {
+          const otherUserId = selectedChat._id; // The receiver of the sent message
+          const updatedUsers = state.users.map((user) =>
+            user._id === otherUserId
+              ? { ...user, lastMessageTimestamp: new Date(res.data.createdAt) }
+              : user
+          );
 
-        updatedUsers.sort((a, b) => {
-          if (!a.lastMessageTimestamp && !b.lastMessageTimestamp) return 0;
-          if (!a.lastMessageTimestamp) return 1;
-          if (!b.lastMessageTimestamp) return -1;
-          return new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime();
-        });
-        return { users: updatedUsers };
+          updatedUsers.sort((a, b) => {
+            if (!a.lastMessageTimestamp && !b.lastMessageTimestamp) return 0;
+            if (!a.lastMessageTimestamp) return 1;
+            if (!b.lastMessageTimestamp) return -1;
+            return new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime();
+          });
+          return { users: updatedUsers };
+        } else if (selectedChatType === "group") {
+          const updatedGroups = state.groups.map((group) =>
+            group._id === selectedChat._id
+              ? { ...group, lastMessageTimestamp: new Date(res.data.createdAt) }
+              : group
+          );
+          updatedGroups.sort((a, b) => {
+            if (!a.lastMessageTimestamp && !b.lastMessageTimestamp) return 0;
+            if (!a.lastMessageTimestamp) return 1;
+            if (!b.lastMessageTimestamp) return -1;
+            return new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime();
+          });
+          return { groups: updatedGroups };
+        }
+        return state;
       });
 
     } catch (error) {
@@ -63,15 +106,20 @@ export const useChatStore = create((set, get) => ({
   },
 
   subscribeToMessages: () => {
-    const { selectedUser } = get();
+    const { selectedChat, selectedChatType } = get();
     const { authUser } = useAuthStore.getState();
 
     const socket = useAuthStore.getState().socket;
 
     socket.on("newMessage", (newMessage) => {
-      const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser?._id;
-      if (!isMessageSentFromSelectedUser) {
-        // Only add to messages if not currently selected user, otherwise message will be fetched by getMessages
+      const isMessageFromSelectedChat = selectedChat && (
+        (selectedChatType === "user" && 
+          (newMessage.senderId === selectedChat._id || newMessage.receiverId === selectedChat._id))
+        ||
+        (selectedChatType === "group" && newMessage.group === selectedChat._id)
+      );
+
+      if (isMessageFromSelectedChat) {
         set({
           messages: [...get().messages, newMessage],
         });
@@ -79,21 +127,37 @@ export const useChatStore = create((set, get) => ({
 
       // Update users list order in real-time
       set((state) => {
-        const otherUserId = newMessage.senderId === authUser._id ? newMessage.receiverId : newMessage.senderId;
-        const updatedUsers = state.users.map((user) =>
-          user._id === otherUserId
-            ? { ...user, lastMessageTimestamp: new Date(newMessage.createdAt) }
-            : user
-        );
+        let updatedUsers = [...state.users];
+        let updatedGroups = [...state.groups];
 
-        // Sort updatedUsers to move the user with the new message to the top
-        updatedUsers.sort((a, b) => {
-          if (!a.lastMessageTimestamp && !b.lastMessageTimestamp) return 0;
-          if (!a.lastMessageTimestamp) return 1;
-          if (!b.lastMessageTimestamp) return -1;
-          return new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime();
-        });
-        return { users: updatedUsers };
+        if (newMessage.receiverId) { // Individual message
+          const otherUserId = newMessage.senderId === authUser._id ? newMessage.receiverId : newMessage.senderId;
+          updatedUsers = state.users.map((user) =>
+            user._id === otherUserId
+              ? { ...user, lastMessageTimestamp: new Date(newMessage.createdAt) }
+              : user
+          );
+          updatedUsers.sort((a, b) => {
+            if (!a.lastMessageTimestamp && !b.lastMessageTimestamp) return 0;
+            if (!a.lastMessageTimestamp) return 1;
+            if (!b.lastMessageTimestamp) return -1;
+            return new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime();
+          });
+        } else if (newMessage.group) { // Group message
+          updatedGroups = state.groups.map((group) =>
+            group._id === newMessage.group
+              ? { ...group, lastMessageTimestamp: new Date(newMessage.createdAt) }
+              : group
+          );
+          updatedGroups.sort((a, b) => {
+            if (!a.lastMessageTimestamp && !b.lastMessageTimestamp) return 0;
+            if (!a.lastMessageTimestamp) return 1;
+            if (!b.lastMessageTimestamp) return -1;
+            return new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime();
+          });
+        }
+
+        return { users: updatedUsers, groups: updatedGroups };
       });
     });
   },
@@ -103,7 +167,7 @@ export const useChatStore = create((set, get) => ({
     socket.off("newMessage");
   },
 
-  setSelectedUser: (selectedUser) => set({ selectedUser }),
+  setSelectedChat: (chat, chatType) => set({ selectedChat: chat, selectedChatType: chatType, messages: [] }),
 
   deleteMessage: async (messageId) => {
     try {
@@ -117,12 +181,20 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  deleteChat: async (userId) => {
+  deleteChat: async (chatId, chatType) => {
     try {
-      await axiosInstance.delete(`/messages/chat/${userId}`);
+      if (chatType === "user") {
+        await axiosInstance.delete(`/messages/chat/${chatId}`);
+      } else if (chatType === "group") {
+        // await axiosInstance.delete(`/groups/${chatId}/delete`); // To be implemented later if needed
+        toast.error("Group chat deletion is not yet supported.");
+        return;
+      }
+      
       set((state) => ({
         messages: [],
-        selectedUser: null,
+        selectedChat: null,
+        selectedChatType: null,
       }));
       toast.success("Chat deleted successfully");
     } catch (error) {
@@ -130,12 +202,17 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  markMessagesAsRead: async (userId) => {
+  markMessagesAsRead: async (chatId, chatType) => {
     try {
-      await axiosInstance.put(`/messages/${userId}/read`);
+      if (chatType === "user") {
+        await axiosInstance.put(`/messages/${chatId}/read`);
+      } else if (chatType === "group") {
+        // Logic for marking group messages as read if applicable
+        console.warn("Marking group messages as read is not yet implemented.");
+      }
       set((state) => ({
         messages: state.messages.map((msg) =>
-          msg.senderId === userId ? { ...msg, read: true } : msg
+          msg.senderId === chatId ? { ...msg, read: true } : msg
         ),
       }));
     } catch (error) {

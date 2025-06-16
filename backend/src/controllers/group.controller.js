@@ -1,0 +1,42 @@
+import Group from "../models/group.model.js";
+import User from "../models/user.model.js";
+
+export const createGroup = async (req, res) => {
+  try {
+    const { name, members } = req.body;
+    const adminId = req.user._id; 
+
+    if (!name || !members || !Array.isArray(members) || members.length < 2) {
+      return res.status(400).json({ error: "Please provide a group name and at least two members." });
+    }
+
+    if (!members.includes(adminId.toString())) {
+      members.push(adminId.toString());
+    }
+
+    const newGroup = new Group({
+      name,
+      members,
+    });
+
+    await newGroup.save();
+
+    res.status(201).json(newGroup);
+  } catch (error) {
+    console.error("Error in createGroup controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const getGroupsForSidebar = async (req, res) => {
+  try {
+    const loggedInUserId = req.user._id;
+
+    const groups = await Group.find({ members: loggedInUserId }).select("-members");
+
+    res.status(200).json(groups);
+  } catch (error) {
+    console.error("Error in getGroupsForSidebar: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}; 

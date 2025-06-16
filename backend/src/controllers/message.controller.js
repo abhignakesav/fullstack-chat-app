@@ -1,6 +1,7 @@
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
 import Notification from "../models/notification.model.js";
+import Group from "../models/group.model.js";
 
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
@@ -61,6 +62,29 @@ export const getMessages = async (req, res) => {
   }
 };
 
+export const getGroupMessages = async (req, res) => {
+  try {
+    const { id: groupId } = req.params;
+    const myId = req.user._id;
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    if (!group.members.includes(myId)) {
+      return res.status(403).json({ error: "You are not a member of this group" });
+    }
+
+    const messages = await Message.find({ group: groupId }).populate("senderId", "fullName profilePic");
+
+    res.status(200).json(messages);
+  } catch (error) {
+    console.error("Error in getGroupMessages controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 export const sendMessage = async (req, res) => {
   try {
     const { text, image } = req.body;
@@ -100,6 +124,54 @@ export const sendMessage = async (req, res) => {
     res.status(201).json(newMessage);
   } catch (error) {
     console.log("Error in sendMessage controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const sendGroupMessage = async (req, res) => {
+  try {
+    const { text, image } = req.body;
+    const { id: groupId } = req.params;
+    const senderId = req.user._id;
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    if (!group.members.includes(senderId)) {
+      return res.status(403).json({ error: "You are not a member of this group" });
+    }
+
+    let imageUrl;
+    if (image) {
+      const uploadResponse = await cloudinary.uploader.upload(image);
+      imageUrl = uploadResponse.secure_url;
+    }
+
+    const newMessage = new Message({
+      senderId,
+      group: groupId,
+      text,
+      image: imageUrl,
+    });
+
+    await newMessage.save();
+
+    // Emit message to all group members (except sender) via sockets
+    group.members.forEach((memberId) => {
+      if (memberId.toString() !== senderId.toString()) {
+        const receiverSocketId = getReceiverSocketId(memberId.toString());
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit("newMessage", newMessage);
+          // Optionally, send notifications for group messages
+        }
+      }
+    });
+
+    res.status(201).json(newMessage);
+  } catch (error) {
+    console.error("Error in sendGroupMessage controller: ", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };
