@@ -30,6 +30,9 @@ const ChatContainer = () => {
   const [deleteType, setDeleteType] = useState(null);
 
   useEffect(() => {
+    console.log("selectedChat changed:", selectedChat);
+    console.log("selectedChatType changed:", selectedChatType);
+
     if (selectedChat) {
       getMessages(selectedChat._id, selectedChatType);
       subscribeToMessages();
@@ -81,11 +84,15 @@ const ChatContainer = () => {
     setDeleteType(null);
   };
 
-  if (isMessagesLoading) {
+  if (isMessagesLoading || !selectedChat) {
     return (
       <div className="flex-1 flex flex-col overflow-auto">
         <ChatHeader />
-        <MessageSkeleton />
+        {!selectedChat ? (
+          <div className="flex-1 flex items-center justify-center text-base-content/70">No chat selected.</div>
+        ) : (
+          <MessageSkeleton />
+        )}
         <MessageInput />
       </div>
     );
@@ -198,7 +205,6 @@ const ChatContainer = () => {
 
       <MessageInput />
 
-      {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-base-100 p-6 rounded-lg max-w-sm w-full mx-4">
