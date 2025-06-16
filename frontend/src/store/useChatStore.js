@@ -102,4 +102,24 @@ export const useChatStore = create((set, get) => ({
       toast.error(error.response.data.message);
     }
   },
+
+  unhideChat: async (userId) => {
+    try {
+      await axiosInstance.post(`/messages/unhide/${userId}`);
+      toast.success("Chat unhidden successfully");
+      // Optionally, refresh users or update state to show the unhidden chat
+    } catch (error) {
+      toast.error(error.response.data.message);
+    }
+  },
+
+  getHiddenChats: async () => {
+    try {
+      const res = await axiosInstance.get("/messages/hidden-chats");
+      return res.data;
+    } catch (error) {
+      toast.error(error.response.data.message);
+      return [];
+    }
+  },
 }));

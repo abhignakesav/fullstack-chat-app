@@ -7,9 +7,34 @@ import { getReceiverSocketId, io } from "../lib/socket.js";
 export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
-    const filteredUsers = await User.find({ _id: { $ne: loggedInUserId } }).select("-password");
 
-    res.status(200).json(filteredUsers);
+    const allUsers = await User.find({ _id: { $ne: loggedInUserId } }).select("-password");
+
+    const usersWithLastMessage = await Promise.all(
+      allUsers.map(async (user) => {
+        const lastMessage = await Message.findOne({
+          $or: [
+            { senderId: loggedInUserId, receiverId: user._id },
+            { senderId: user._id, receiverId: loggedInUserId },
+          ],
+        }).sort({ createdAt: -1 }); // Get the most recent message
+
+        return {
+          ...user.toObject(),
+          lastMessageTimestamp: lastMessage ? lastMessage.createdAt : null,
+        };
+      })
+    );
+
+    // Sort users by last message timestamp (most recent first)
+    usersWithLastMessage.sort((a, b) => {
+      if (!a.lastMessageTimestamp && !b.lastMessageTimestamp) return 0;
+      if (!a.lastMessageTimestamp) return 1;
+      if (!b.lastMessageTimestamp) return -1;
+      return b.lastMessageTimestamp.getTime() - a.lastMessageTimestamp.getTime();
+    });
+
+    res.status(200).json(usersWithLastMessage);
   } catch (error) {
     console.error("Error in getUsersForSidebar: ", error.message);
     res.status(500).json({ error: "Internal server error" });
@@ -90,6 +115,31 @@ export const deleteChat = async (req, res) => {
   }
 };
 
+export const deleteMessage = async (req, res) => {
+  try {
+    const { id: messageId } = req.params;
+    const myId = req.user._id;
+
+    const message = await Message.findById(messageId);
+
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    // Ensure the user deleting the message is the sender
+    if (message.senderId.toString() !== myId.toString()) {
+      return res.status(401).json({ error: "You can only delete your own messages" });
+    }
+
+    await Message.deleteOne({ _id: messageId });
+
+    res.status(200).json({ message: "Message deleted successfully" });
+  } catch (error) {
+    console.log("Error in deleteMessage controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 export const hideChat = async (req, res) => {
   try {
     const { id: userToChatId } = req.params;
@@ -109,6 +159,73 @@ export const hideChat = async (req, res) => {
     res.status(200).json({ message: "Chat hidden successfully" });
   } catch (error) {
     console.log("Error in hideChat controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const unhideChat = async (req, res) => {
+  try {
+    const { id: userToChatId } = req.params;
+    const myId = req.user._id;
+
+    // Update all messages to be unhidden for the current user
+    await Message.updateMany(
+      {
+        $or: [
+          { senderId: myId, receiverId: userToChatId },
+          { senderId: userToChatId, receiverId: myId },
+        ],
+      },
+      { $unset: { [`hiddenFor.${myId}`]: "" } } // Use $unset to remove the field
+    );
+
+    res.status(200).json({ message: "Chat unhidden successfully" });
+  } catch (error) {
+    console.log("Error in unhideChat controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const getHiddenChatsForUser = async (req, res) => {
+  try {
+    const myId = req.user._id;
+
+    const hiddenMessages = await Message.find({
+      [`hiddenFor.${myId}`]: true,
+    }).distinct(myId === "senderId" ? "receiverId" : "senderId"); // This might need refinement
+
+    // The above distinct might not be enough. Let's get distinct users who have messages hidden for `myId`.
+    const hiddenChatUsers = await Message.aggregate([
+      {
+        $match: {
+          $or: [
+            { senderId: myId },
+            { receiverId: myId },
+          ],
+          [`hiddenFor.${myId}`]: true,
+        },
+      },
+      {
+        $project: {
+          otherUserId: {
+            $cond: { if: { $eq: ["$senderId", myId] }, then: "$receiverId", else: "$senderId" }
+          }
+        }
+      },
+      {
+        $group: {
+          _id: "$otherUserId"
+        }
+      }
+    ]);
+
+    const userIds = hiddenChatUsers.map(user => user._id);
+
+    const users = await User.find({ _id: { $in: userIds } }).select("-password");
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("Error in getHiddenChatsForUser: ", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };

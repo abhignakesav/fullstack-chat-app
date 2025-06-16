@@ -1,18 +1,75 @@
 import { THEMES } from "../constants";
 import { useThemeStore } from "../store/useThemeStore";
 import { Send } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useChatStore } from "../store/useChatStore";
+import { useAuthStore } from "../store/useAuthStore";
 
 const PREVIEW_MESSAGES = [
-  { id: 1, content: "Hey! How's it going?", isSent: false },
-  { id: 2, content: "I'm doing great! Just working on some new features.", isSent: true },
+  { id: 1, content: "Hey! How\'s it going?", isSent: false },
+  { id: 2, content: "I\'m doing great! Just working on some new features.", isSent: true },
 ];
 
 const SettingsPage = () => {
   const { theme, setTheme } = useThemeStore();
+  const { getHiddenChats, unhideChat, getUsers } = useChatStore();
+  const { authUser } = useAuthStore();
+
+  const [hiddenUsers, setHiddenUsers] = useState([]);
+  const [isLoadingHiddenChats, setIsLoadingHiddenChats] = useState(false);
+
+  useEffect(() => {
+    const fetchHiddenChats = async () => {
+      setIsLoadingHiddenChats(true);
+      const hidden = await getHiddenChats();
+      setHiddenUsers(hidden);
+      setIsLoadingHiddenChats(false);
+    };
+    fetchHiddenChats();
+  }, [getHiddenChats]);
+
+  const handleUnhideChat = async (userId) => {
+    await unhideChat(userId);
+    // After unhiding, refresh the list of hidden chats and general users
+    const updatedHidden = await getHiddenChats();
+    setHiddenUsers(updatedHidden);
+    getUsers(); // Refresh the main users list to show the unhidden chat
+  };
 
   return (
     <div className="h-screen container mx-auto px-4 pt-20 max-w-5xl">
       <div className="space-y-6">
+        {/* Profile Section */}
+        <div className="flex flex-col gap-1">
+          <h2 className="text-lg font-semibold">Profile</h2>
+          <p className="text-sm text-base-content/70">Manage your profile information</p>
+        </div>
+        <div className="rounded-xl border border-base-300 overflow-hidden bg-base-100 shadow-lg p-6">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="avatar">
+              <div className="size-20 rounded-full border-2 border-primary overflow-hidden">
+                <img src={authUser?.profilePic || "/avatar.png"} alt="Profile Picture" className="w-full h-full object-cover" />
+              </div>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-primary">{authUser?.fullName}</h3>
+              <p className="text-sm text-base-content/70">{authUser?.email}</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-base-content/70">Member Since</label>
+              <p className="text-base-content">{new Date(authUser?.createdAt).toLocaleDateString()}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-base-content/70">Account Status</label>
+              <p className="text-base-content text-success">Active</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Theme Section */}
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold">Theme</h2>
           <p className="text-sm text-base-content/70">Choose a theme for your chat interface</p>
@@ -43,7 +100,42 @@ const SettingsPage = () => {
           ))}
         </div>
 
-        {/* Preview Section */}
+        {/* Hidden Chats Section */}
+        <div className="flex flex-col gap-1">
+          <h2 className="text-lg font-semibold">Hidden Chats</h2>
+          <p className="text-sm text-base-content/70">Chats you have hidden</p>
+        </div>
+
+        <div className="rounded-xl border border-base-300 overflow-hidden bg-base-100 shadow-lg p-6">
+          {isLoadingHiddenChats ? (
+            <p className="text-center text-base-content/70">Loading hidden chats...</p>
+          ) : hiddenUsers.length === 0 ? (
+            <p className="text-center text-base-content/70">No hidden chats found.</p>
+          ) : (
+            <div className="space-y-4">
+              {hiddenUsers.map((user) => (
+                <div key={user._id} className="flex items-center justify-between p-3 bg-base-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="avatar">
+                      <div className="size-10 rounded-full relative">
+                        <img src={user.profilePic || "/avatar.png"} alt={user.fullName} />
+                      </div>
+                    </div>
+                    <h3 className="font-medium">{user.fullName}</h3>
+                  </div>
+                  <button
+                    onClick={() => handleUnhideChat(user._id)}
+                    className="btn btn-sm btn-primary"
+                  >
+                    Unhide
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Preview Section (Optional, keep if still needed) */}
         <h3 className="text-lg font-semibold mb-3">Preview</h3>
         <div className="rounded-xl border border-base-300 overflow-hidden bg-base-100 shadow-lg">
           <div className="p-4 bg-base-200">

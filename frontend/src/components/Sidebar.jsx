@@ -14,9 +14,17 @@ const Sidebar = () => {
     getUsers();
   }, [getUsers]);
 
+  // Sort users by last message timestamp (most recent first)
+  const sortedUsers = [...users].sort((a, b) => {
+    if (!a.lastMessageTimestamp && !b.lastMessageTimestamp) return 0;
+    if (!a.lastMessageTimestamp) return 1;
+    if (!b.lastMessageTimestamp) return -1;
+    return new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime();
+  });
+
   const filteredUsers = showOnlineOnly
-    ? users.filter((user) => onlineUsers.includes(user._id))
-    : users;
+    ? sortedUsers.filter((user) => onlineUsers.includes(user._id))
+    : sortedUsers;
 
   if (isUsersLoading) return <SidebarSkeleton />;
 
@@ -42,15 +50,16 @@ const Sidebar = () => {
         </div>
       </div>
 
-      <div className="overflow-y-auto w-full py-3">
+      <div className="overflow-y-auto w-full">
         {filteredUsers.map((user) => (
           <button
             key={user._id}
             onClick={() => setSelectedUser(user)}
             className={`
-              w-full p-3 flex items-center gap-3
+              w-full flex items-center gap-3
               hover:bg-base-300 transition-colors
               ${selectedUser?._id === user._id ? "bg-base-300 ring-1 ring-base-300" : ""}
+              py-2 px-3
             `}
           >
             <div className="relative mx-auto lg:mx-0">
