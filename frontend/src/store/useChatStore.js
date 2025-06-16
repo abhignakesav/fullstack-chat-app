@@ -40,15 +40,32 @@ export const useChatStore = create((set, get) => ({
   getMessages: async (chatId, chatType) => {
     set({ isMessagesLoading: true });
     try {
+      // Ensure users are loaded first
+      if (chatType === "user") {
+        try {
+          await get().getUsers();
+        } catch (error) {
+          console.error("Error loading users:", error);
+          // Continue with message loading even if users fail to load
+        }
+      }
+      
       let res;
       if (chatType === "user") {
         res = await axiosInstance.get(`/messages/${chatId}`);
       } else if (chatType === "group") {
         res = await axiosInstance.get(`/messages/group/${chatId}`);
       }
-      set({ messages: res.data });
+      
+      if (res?.data) {
+        set({ messages: res.data });
+      } else {
+        set({ messages: [] });
+      }
     } catch (error) {
-      toast.error(error.response.data.message);
+      console.error("Error loading messages:", error);
+      toast.error(error.response?.data?.message || "Failed to load messages");
+      set({ messages: [] });
     } finally {
       set({ isMessagesLoading: false });
     }

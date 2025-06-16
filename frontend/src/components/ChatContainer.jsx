@@ -141,65 +141,77 @@ const ChatContainer = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => {
-          const isMine = message.senderId === authUser._id;
-          const senderUser = users.find(u => u._id === message.senderId) || authUser;
-          return (
-            <div
-              key={message._id}
-              className={`chat ${isMine ? "chat-end" : "chat-start"}`}
-            >
-              <div className="chat-image avatar">
-                <div className="size-10 rounded-full border">
-                  <img
-                    src={isMine ? authUser.profilePic || "/avatar.png" : senderUser.profilePic || "/avatar.png"}
-                    alt="profile pic"
-                  />
+        {messages && messages.length > 0 ? (
+          messages.map((message) => {
+            if (!message) return null;
+            
+            const isMine = message.senderId === authUser?._id;
+            const senderUser = users?.find(u => u._id === message.senderId);
+            const displayUser = senderUser || authUser;
+            
+            if (!displayUser) return null;
+            
+            return (
+              <div
+                key={message._id}
+                className={`chat ${isMine ? "chat-end" : "chat-start"}`}
+              >
+                <div className="chat-image avatar">
+                  <div className="size-10 rounded-full border">
+                    <img
+                      src={isMine ? authUser?.profilePic || "/avatar.png" : displayUser?.profilePic || "/avatar.png"}
+                      alt="profile pic"
+                    />
+                  </div>
+                </div>
+                <div className="chat-header mb-1">
+                  {selectedChatType === "group" && !isMine && (
+                    <span className="text-xs opacity-70 mr-2">{displayUser?.fullName || "Unknown User"}</span>
+                  )}
+                  <time className="text-xs opacity-50 ml-1">
+                    {message.createdAt ? formatMessageTime(message.createdAt) : ""}
+                  </time>
+                </div>
+                <div 
+                  className={`chat-bubble flex flex-col group relative ${
+                    !isMine && !message.read && selectedChatType === "user" ? "bg-primary/20" : ""
+                  }`}
+                >
+                  {message.image && (
+                    <img
+                      src={message.image}
+                      alt="Attachment"
+                      className="sm:max-w-[200px] rounded-md mb-2"
+                    />
+                  )}
+                  {message.text && (
+                    <p className="flex items-center gap-2">
+                      <span>{message.text}</span>
+                      <button
+                        onClick={() => handleSpeak(message.text)}
+                        className="btn btn-ghost btn-xs btn-circle opacity-70 hover:opacity-100"
+                        title="Listen to message"
+                      >
+                        <Volume2 size={16} />
+                      </button>
+                    </p>
+                  )}
+                  {isMine && (
+                    <button
+                      onClick={() => deleteMessage(message._id)}
+                      className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete message"
+                    >
+                      <Trash2 size={16} className="text-error" />
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="chat-header mb-1">
-                {selectedChatType === "group" && !isMine && <span className="text-xs opacity-70 mr-2">{senderUser.fullName}</span>}
-                <time className="text-xs opacity-50 ml-1">
-                  {formatMessageTime(message.createdAt)}
-                </time>
-              </div>
-              <div 
-                className={`chat-bubble flex flex-col group relative ${
-                  !isMine && !message.read && selectedChatType === "user" ? "bg-primary/20" : ""
-                }`}
-              >
-                {message.image && (
-                  <img
-                    src={message.image}
-                    alt="Attachment"
-                    className="sm:max-w-[200px] rounded-md mb-2"
-                  />
-                )}
-                {message.text && (
-                  <p className="flex items-center gap-2">
-                    <span>{message.text}</span>
-                    <button
-                      onClick={() => handleSpeak(message.text)}
-                      className="btn btn-ghost btn-xs btn-circle opacity-70 hover:opacity-100"
-                      title="Listen to message"
-                    >
-                      <Volume2 size={16} />
-                    </button>
-                  </p>
-                )}
-                {isMine && (
-                  <button
-                    onClick={() => deleteMessage(message._id)}
-                    className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Delete message"
-                  >
-                    <Trash2 size={16} className="text-error" />
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-base-content/70">No messages found.</div>
+        )}
         <div ref={messageEndRef} />
       </div>
 
