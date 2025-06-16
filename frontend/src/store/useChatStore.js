@@ -24,14 +24,26 @@ export const useChatStore = create((set, get) => ({
       console.log("Users response:", res.data);
       
       if (res?.data) {
-        // Ensure each user has required fields
-        const validUsers = res.data.filter(user => 
+        // Ensure each user has required fields and a default profilePic
+        const processedUsers = res.data.map(user => {
+          let profilePic = user.profilePic;
+          if (!profilePic || typeof profilePic !== 'string') {
+            console.warn("User missing profilePic or invalid type, setting default:", user);
+            profilePic = "/avatar.png";
+          }
+          // Also ensure fullName is a string, although already checked in filter, for consistency
+          const fullName = (user.fullName && typeof user.fullName === 'string') ? user.fullName : "Unknown User";
+
+          return { ...user, profilePic, fullName };
+        });
+
+        const validUsers = processedUsers.filter(user => 
           user && 
           user._id && 
-          typeof user._id === 'string' &&
-          typeof user.fullName === 'string'
+          typeof user._id === 'string'
+          // fullName and profilePic are now guaranteed to be strings
         );
-        console.log("Valid users:", validUsers);
+        console.log("Valid users after processing:", validUsers);
         set({ users: validUsers });
       } else {
         console.log("No users data in response");
