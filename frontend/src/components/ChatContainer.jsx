@@ -87,7 +87,7 @@ const ChatContainer = () => {
   if (isMessagesLoading || !selectedChat) {
     return (
       <div className="flex-1 flex flex-col overflow-auto">
-        <ChatHeader />
+        {selectedChat ? <ChatHeader /> : null}
         {!selectedChat ? (
           <div className="flex-1 flex items-center justify-center text-base-content/70">No chat selected.</div>
         ) : (
