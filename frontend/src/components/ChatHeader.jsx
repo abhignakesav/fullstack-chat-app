@@ -13,10 +13,15 @@ const ChatHeader = () => {
     return null;
   }
 
+  // Debugging logs for group members functionality
+  console.log("ChatHeader: selectedChat", selectedChat);
+  console.log("ChatHeader: selectedChatType", selectedChatType);
+
   const groupMembersDetails = selectedChatType === "group" && selectedChat.members ?
     selectedChat.members.map(memberId => users.find(user => user._id === memberId))
-      .filter(Boolean)
+      .filter(Boolean) // Filter out any undefined members
     : [];
+  console.log("ChatHeader: groupMembersDetails", groupMembersDetails);
 
   return (
     <div className="p-2.5 border-b border-base-300">
