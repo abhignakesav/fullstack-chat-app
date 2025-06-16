@@ -13,8 +13,8 @@ import notificationRoutes from "./routes/notification.route.js";
 import { app, server } from "./lib/socket.js";
 
 dotenv.config();
-console.log("MONGO_URI:", process.env.MONGO_URI);
-
+// Remove sensitive information from logs
+console.log("Environment loaded successfully");
 
 const PORT = process.env.PORT || 5000;
 // const __dirname = path.resolve(); // This line is also not needed if not serving frontend
@@ -42,6 +42,6 @@ app.use("/api/notifications", notificationRoutes);
 // }
 
 server.listen(PORT, () => {
-  console.log("server is running on PORT:" + PORT);
+  console.log("Server is running on PORT:", PORT);
   connectDB();
 });
