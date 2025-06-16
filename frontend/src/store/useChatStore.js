@@ -220,11 +220,30 @@ export const useChatStore = create((set, get) => ({
   setSelectedChat: (chat, chatType) => {
     console.log("Setting selected chat:", chat, chatType);
     if (!chat || !chatType) {
-      console.log("Invalid chat or chat type");
+      console.log("Invalid chat or chat type provided to setSelectedChat.");
       set({ selectedChat: null, selectedChatType: null, messages: [] });
       return;
     }
-    set({ selectedChat: chat, selectedChatType: chatType, messages: [] });
+
+    // Ensure profilePic exists for user chats, or set a default
+    const chatWithProfilePic = { ...chat };
+    if (chatType === "user") {
+      if (!chatWithProfilePic.profilePic) {
+        console.log("selected user chat missing profilePic, setting default.", chatWithProfilePic);
+        chatWithProfilePic.profilePic = "/avatar.png";
+      }
+    } else if (chatType === "group") {
+      // For group chats, ensure 'name' is present, and set a default 'profilePic' concept if needed
+      if (!chatWithProfilePic.name) {
+        console.warn("Group chat missing name property:", chatWithProfilePic);
+        chatWithProfilePic.name = "Unknown Group";
+      }
+      // You might want a specific default group icon here if not already handled in ChatHeader/ChatContainer
+      // chatWithProfilePic.profilePic = "/group-avatar.png"; // Example if you have a group-specific default
+    }
+
+    set({ selectedChat: chatWithProfilePic, selectedChatType: chatType, messages: [] });
+    console.log("Selected chat updated to:", chatWithProfilePic, chatType);
   },
 
   deleteMessage: async (messageId) => {
