@@ -143,13 +143,17 @@ const ChatContainer = () => {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages && messages.length > 0 ? (
           messages.map((message) => {
-            if (!message) return null;
+            if (!message || !message.senderId) return null;
             
             const isMine = message.senderId === authUser?._id;
-            const senderUser = users?.find(u => u._id === message.senderId);
+            const senderUser = users?.find(u => u?._id === message.senderId);
             const displayUser = senderUser || authUser;
             
-            if (!displayUser) return null;
+            if (!displayUser || !displayUser._id) return null;
+            
+            const profilePic = isMine 
+              ? (authUser?.profilePic || "/avatar.png")
+              : (displayUser?.profilePic || "/avatar.png");
             
             return (
               <div
@@ -159,14 +163,20 @@ const ChatContainer = () => {
                 <div className="chat-image avatar">
                   <div className="size-10 rounded-full border">
                     <img
-                      src={isMine ? authUser?.profilePic || "/avatar.png" : displayUser?.profilePic || "/avatar.png"}
+                      src={profilePic}
                       alt="profile pic"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "/avatar.png";
+                      }}
                     />
                   </div>
                 </div>
                 <div className="chat-header mb-1">
                   {selectedChatType === "group" && !isMine && (
-                    <span className="text-xs opacity-70 mr-2">{displayUser?.fullName || "Unknown User"}</span>
+                    <span className="text-xs opacity-70 mr-2">
+                      {displayUser?.fullName || "Unknown User"}
+                    </span>
                   )}
                   <time className="text-xs opacity-50 ml-1">
                     {message.createdAt ? formatMessageTime(message.createdAt) : ""}
