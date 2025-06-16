@@ -42,7 +42,7 @@ const ChatContainer = () => {
     }
     return () => {
       unsubscribeFromMessages();
-      useChatStore.getState().set({ messages: [] });
+      useChatStore.setState({ messages: [] });
     };
   }, [selectedChat, selectedChatType, getMessages, subscribeToMessages, unsubscribeFromMessages, markMessagesAsRead]);
 
