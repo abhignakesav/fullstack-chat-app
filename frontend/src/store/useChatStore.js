@@ -45,16 +45,36 @@ export const useChatStore = create((set, get) => ({
 
   subscribeToMessages: () => {
     const { selectedUser } = get();
-    if (!selectedUser) return;
+    const { authUser } = useAuthStore.getState();
 
     const socket = useAuthStore.getState().socket;
 
     socket.on("newMessage", (newMessage) => {
-      const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
-      if (!isMessageSentFromSelectedUser) return;
+      const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser?._id;
+      if (!isMessageSentFromSelectedUser) {
+        // Only add to messages if not currently selected user, otherwise message will be fetched by getMessages
+        set({
+          messages: [...get().messages, newMessage],
+        });
+      }
 
-      set({
-        messages: [...get().messages, newMessage],
+      // Update users list order in real-time
+      set((state) => {
+        const otherUserId = newMessage.senderId === authUser._id ? newMessage.receiverId : newMessage.senderId;
+        const updatedUsers = state.users.map((user) =>
+          user._id === otherUserId
+            ? { ...user, lastMessageTimestamp: new Date(newMessage.createdAt) }
+            : user
+        );
+
+        // Sort updatedUsers to move the user with the new message to the top
+        updatedUsers.sort((a, b) => {
+          if (!a.lastMessageTimestamp && !b.lastMessageTimestamp) return 0;
+          if (!a.lastMessageTimestamp) return 1;
+          if (!b.lastMessageTimestamp) return -1;
+          return new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime();
+        });
+        return { users: updatedUsers };
       });
     });
   },
