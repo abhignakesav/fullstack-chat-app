@@ -20,6 +20,7 @@ const ChatContainer = () => {
     deleteMessage,
     deleteChat,
     hideChat,
+    markMessagesAsRead,
   } = useChatStore();
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
@@ -30,8 +31,10 @@ const ChatContainer = () => {
   useEffect(() => {
     getMessages(selectedUser._id);
     subscribeToMessages();
+    // Mark messages as read when chat is opened
+    markMessagesAsRead(selectedUser._id);
     return () => unsubscribeFromMessages();
-  }, [selectedUser._id, getMessages, subscribeToMessages, unsubscribeFromMessages]);
+  }, [selectedUser._id, getMessages, subscribeToMessages, unsubscribeFromMessages, markMessagesAsRead]);
 
   useEffect(() => {
     if (messageEndRef.current && messages) {
@@ -155,7 +158,11 @@ const ChatContainer = () => {
                   {formatMessageTime(message.createdAt)}
                 </time>
               </div>
-              <div className="chat-bubble flex flex-col group relative">
+              <div 
+                className={`chat-bubble flex flex-col group relative ${
+                  !isMine && !message.read ? "bg-primary/20" : ""
+                }`}
+              >
                 {message.image && (
                   <img
                     src={message.image}

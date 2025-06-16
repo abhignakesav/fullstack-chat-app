@@ -143,4 +143,18 @@ export const useChatStore = create((set, get) => ({
       return [];
     }
   },
+
+  markMessagesAsRead: async (userId) => {
+    try {
+      await axiosInstance.put(`/messages/${userId}/read`);
+      set((state) => ({
+        messages: state.messages.map((msg) =>
+          msg.senderId === userId ? { ...msg, read: true } : msg
+        ),
+      }));
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+      toast.error("Failed to mark messages as read");
+    }
+  },
 }));

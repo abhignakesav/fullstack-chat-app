@@ -259,3 +259,25 @@ export const getHiddenChatsForUser = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const markMessagesAsRead = async (req, res) => {
+  try {
+    const { id: userToChatId } = req.params;
+    const myId = req.user._id;
+
+    // Update all unread messages from this user to read
+    await Message.updateMany(
+      {
+        senderId: userToChatId,
+        receiverId: myId,
+        read: false
+      },
+      { read: true }
+    );
+
+    res.status(200).json({ message: "Messages marked as read" });
+  } catch (error) {
+    console.log("Error in markMessagesAsRead controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
