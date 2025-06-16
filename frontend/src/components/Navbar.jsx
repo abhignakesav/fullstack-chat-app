@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
-import { LogOut, MessageSquare, Settings, User } from "lucide-react";
+import { LogOut, MessageSquare, Settings, User, Bell } from "lucide-react";
 
 const Navbar = () => {
-  const { logout, authUser } = useAuthStore();
+  const { logout, authUser, notifications } = useAuthStore();
+
+  const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
   return (
     <header
@@ -22,25 +24,38 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link
-              to={"/settings"}
-              className={`
-              btn btn-sm gap-2 transition-colors
-              
-              `}
-            >
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Settings</span>
-            </Link>
-
             {authUser && (
               <>
+                <Link
+                  to={"/settings"}
+                  className={`
+                  btn btn-sm gap-2 transition-colors
+                  
+                  `}
+                >
+                  <Settings className="w-4 h-4" />
+                  <span className="hidden sm:inline">Settings</span>
+                </Link>
+
                 <Link to={"/profile"} className={`btn btn-sm gap-2`}>
                   <User className="size-5" />
                   <span className="hidden sm:inline">Profile</span>
                 </Link>
 
-                <button className="flex gap-2 items-center" onClick={logout}>
+                <Link
+                  to={"/settings"}
+                  className="btn btn-sm gap-2 relative"
+                >
+                  <Bell className="w-4 h-4" />
+                  <span className="hidden sm:inline">Notifications</span>
+                  {unreadNotificationsCount > 0 && (
+                    <span className="badge badge-sm badge-primary absolute -top-1 -right-1">
+                      {unreadNotificationsCount}
+                    </span>
+                  )}
+                </Link>
+
+                <button className="flex gap-2 items-center btn btn-sm" onClick={logout}>
                   <LogOut className="size-5" />
                   <span className="hidden sm:inline">Logout</span>
                 </button>

@@ -98,6 +98,7 @@ export const useChatStore = create((set, get) => ({
         selectedUser: null,
       }));
       toast.success("Chat hidden successfully");
+      get().getUsers();
     } catch (error) {
       toast.error(error.response.data.message);
     }

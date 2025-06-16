@@ -1,5 +1,6 @@
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
+import Notification from "../models/notification.model.js";
 
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
@@ -8,15 +9,31 @@ export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
 
+    // First, get all users excluding the logged-in user
     const allUsers = await User.find({ _id: { $ne: loggedInUserId } }).select("-password");
 
+    // Filter out users whose chats are hidden for the loggedInUserId
+    const usersFilteredByHidden = await Promise.all(
+      allUsers.filter(async (user) => {
+        const hiddenMessagesCount = await Message.countDocuments({
+          $or: [
+            { senderId: loggedInUserId, receiverId: user._id },
+            { senderId: user._id, receiverId: loggedInUserId },
+          ],
+          [`hiddenFor.${loggedInUserId}`]: true,
+        });
+        return hiddenMessagesCount === 0;
+      })
+    );
+
     const usersWithLastMessage = await Promise.all(
-      allUsers.map(async (user) => {
+      usersFilteredByHidden.map(async (user) => {
         const lastMessage = await Message.findOne({
           $or: [
             { senderId: loggedInUserId, receiverId: user._id },
             { senderId: user._id, receiverId: loggedInUserId },
           ],
+          [`hiddenFor.${loggedInUserId}`]: { $ne: true }, // Ensure message is not hidden
         }).sort({ createdAt: -1 }); // Get the most recent message
 
         return {
@@ -83,9 +100,22 @@ export const sendMessage = async (req, res) => {
 
     await newMessage.save();
 
+    // Create and save a new notification for the receiver
+    const newNotification = new Notification({
+      senderId: newMessage.senderId,
+      receiverId: newMessage.receiverId,
+      messageId: newMessage._id,
+      type: "new_message",
+      content: `You have a new message from ${req.user.fullName || req.user.username}`,
+    });
+    await newNotification.save();
+
     const receiverSocketId = getReceiverSocketId(receiverId);
     if (receiverSocketId) {
+      // Emit newMessage to the receiver (for chat update)
       io.to(receiverSocketId).emit("newMessage", newMessage);
+      // Emit newNotification to the receiver (for general notification)
+      io.to(receiverSocketId).emit("newNotification", newNotification);
     }
 
     res.status(201).json(newMessage);

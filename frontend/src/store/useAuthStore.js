@@ -13,6 +13,7 @@ export const useAuthStore = create((set, get) => ({
   isUpdatingProfile: false,
   isCheckingAuth: true,
   onlineUsers: [],
+  notifications: [],
   socket: null,
 
   checkAuth: async () => {
@@ -21,6 +22,7 @@ export const useAuthStore = create((set, get) => ({
 
       set({ authUser: res.data });
       get().connectSocket();
+      get().getNotifications();
     } catch (error) {
       console.log("Error in checkAuth:", error);
       set({ authUser: null });
@@ -99,8 +101,37 @@ export const useAuthStore = create((set, get) => ({
     socket.on("getOnlineUsers", (userIds) => {
       set({ onlineUsers: userIds });
     });
+
+    socket.on("newNotification", (notification) => {
+      toast.success(notification.content);
+      set((state) => ({ notifications: [notification, ...state.notifications] }));
+    });
   },
   disconnectSocket: () => {
     if (get().socket?.connected) get().socket.disconnect();
+  },
+
+  getNotifications: async () => {
+    try {
+      const res = await axiosInstance.get("/notifications");
+      set({ notifications: res.data });
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      toast.error("Failed to fetch notifications.");
+    }
+  },
+
+  markNotificationAsRead: async (notificationId) => {
+    try {
+      await axiosInstance.put(`/notifications/${notificationId}/read`);
+      set((state) => ({
+        notifications: state.notifications.map((n) =>
+          n._id === notificationId ? { ...n, read: true } : n
+        ),
+      }));
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      toast.error("Failed to mark notification as read.");
+    }
   },
 }));
