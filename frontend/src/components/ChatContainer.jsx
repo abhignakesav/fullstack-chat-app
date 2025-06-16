@@ -168,23 +168,18 @@ const ChatContainer = () => {
               return null; // Skip rendering if displayUser is invalid
             }
 
-            // Get profile pic with fallback
-            let profilePic = "/avatar.png"; // Default fallback
-            try {
-              if (isMine && authUser?.profilePic) {
-                profilePic = authUser.profilePic;
-                console.log("Profile Pic (isMine & authUser.profilePic):", profilePic);
-              } else if (displayUser?.profilePic) {
-                profilePic = displayUser.profilePic;
-                console.log("Profile Pic (displayUser.profilePic):", profilePic);
-              } else {
-                console.log("Using default profile pic for:", displayUser);
-              }
-            } catch (error) {
-              console.error("Error determining profile pic, using fallback:", error);
-              profilePic = "/avatar.png"; // Ensure fallback on error
+            // Ensure profilePicSrc is always a valid string with a fallback
+            let profilePicSrc = "/avatar.png"; // Default fallback
+            if (isMine && authUser?.profilePic && typeof authUser.profilePic === 'string') {
+              profilePicSrc = authUser.profilePic;
+              console.log("Profile Pic Source (isMine & authUser.profilePic):", profilePicSrc);
+            } else if (displayUser?.profilePic && typeof displayUser.profilePic === 'string') {
+              profilePicSrc = displayUser.profilePic;
+              console.log("Profile Pic Source (displayUser.profilePic):", profilePicSrc);
+            } else {
+              console.log("Using default profile pic source for:", displayUser);
             }
-            console.log("Final Profile Pic for message:", message._id, profilePic);
+            console.log("Final Profile Pic Source for message:", message._id, profilePicSrc);
             
             return (
               <div
@@ -194,7 +189,7 @@ const ChatContainer = () => {
                 <div className="chat-image avatar">
                   <div className="size-10 rounded-full border">
                     <img
-                      src={profilePic}
+                      src={profilePicSrc} // Use the guaranteed valid source
                       alt="profile pic"
                       onError={(e) => {
                         console.log("Image load error, using fallback");
