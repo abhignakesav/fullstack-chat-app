@@ -3,11 +3,12 @@ import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import { Users } from "lucide-react";
+import { formatMessageTime } from "../lib/utils";
 
 const Sidebar = () => {
   const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading } = useChatStore();
 
-  const { onlineUsers } = useAuthStore();
+  const { authUser, onlineUsers } = useAuthStore();
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
 
   useEffect(() => {
@@ -46,7 +47,7 @@ const Sidebar = () => {
             />
             <span className="text-sm">Show online only</span>
           </label>
-          <span className="text-xs text-zinc-500">({onlineUsers.length - 1} online)</span>
+          <span className="text-xs text-zinc-500">({onlineUsers.length} online)</span>
         </div>
       </div>
 
@@ -60,12 +61,13 @@ const Sidebar = () => {
               hover:bg-base-300 transition-colors
               ${selectedUser?._id === user._id ? "bg-base-300 ring-1 ring-base-300" : ""}
               py-2 px-3
+              ${user.lastMessage && !user.lastMessage.read && user.lastMessage.receiverId === authUser._id ? "bg-primary/10" : ""} 
             `}
           >
             <div className="relative mx-auto lg:mx-0">
               <img
                 src={user.profilePic || "/avatar.png"}
-                alt={user.name}
+                alt={user.fullName}
                 className="size-12 object-cover rounded-full"
               />
               {onlineUsers.includes(user._id) && (
@@ -78,16 +80,25 @@ const Sidebar = () => {
 
             {/* User info - only visible on larger screens */}
             <div className="hidden lg:block text-left min-w-0">
-              <div className="font-medium truncate">{user.fullName}</div>
-              <div className="text-sm text-zinc-400">
-                {onlineUsers.includes(user._id) ? "Online" : "Offline"}
+              <div className="font-medium truncate flex justify-between items-center">
+                <span>{user.fullName}</span>
+                {user.lastMessageTimestamp && (
+                  <span className="text-xs opacity-50">
+                    {formatMessageTime(user.lastMessageTimestamp)}
+                  </span>
+                )}
               </div>
+              {user.lastMessage && (
+                <div className={`text-sm truncate ${!user.lastMessage.read && user.lastMessage.receiverId === authUser._id ? "font-semibold text-primary" : "text-zinc-400"}`}>
+                  {user.lastMessage.text ? user.lastMessage.text : user.lastMessage.image ? "Image" : ""}
+                </div>
+              )}
             </div>
           </button>
         ))}
 
         {filteredUsers.length === 0 && (
-          <div className="text-center text-zinc-500 py-4">No online users</div>
+          <div className="text-center text-zinc-500 py-4">No users found</div>
         )}
       </div>
     </aside>

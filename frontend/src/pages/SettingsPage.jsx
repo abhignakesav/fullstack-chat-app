@@ -12,35 +12,22 @@ const PREVIEW_MESSAGES = [
 
 const SettingsPage = () => {
   const { theme, setTheme } = useThemeStore();
-  const { getHiddenChats, unhideChat, getUsers } = useChatStore();
-  const { authUser, notifications, getNotifications, markNotificationAsRead } = useAuthStore();
+  const { getUsers } = useChatStore();
+  const { authUser, notifications, getNotifications, markNotificationAsRead, markAllNotificationsAsRead } = useAuthStore();
 
-  const [hiddenUsers, setHiddenUsers] = useState([]);
-  const [isLoadingHiddenChats, setIsLoadingHiddenChats] = useState(false);
-  const [activeTab, setActiveTab] = useState("profile"); // New state for tabs
-
-  useEffect(() => {
-    const fetchHiddenChats = async () => {
-      setIsLoadingHiddenChats(true);
-      const hidden = await getHiddenChats();
-      setHiddenUsers(hidden);
-      setIsLoadingHiddenChats(false);
-    };
-    fetchHiddenChats();
-  }, [getHiddenChats]);
+  const [activeTab, setActiveTab] = useState("profile");
 
   useEffect(() => {
     if (authUser) {
-      getNotifications(); // Fetch notifications when component mounts and user is authenticated
+      getNotifications();
     }
   }, [authUser, getNotifications]);
 
-  const handleUnhideChat = async (userId) => {
-    await unhideChat(userId);
-    // After unhiding, refresh the list of hidden chats and general users
-    const updatedHidden = await getHiddenChats();
-    setHiddenUsers(updatedHidden);
-    getUsers(); // Refresh the main users list to show the unhidden chat
+  const handleTabClick = (tabName) => {
+    setActiveTab(tabName);
+    if (tabName === "notifications") {
+      markAllNotificationsAsRead();
+    }
   };
 
   const handleMarkAsRead = async (notificationId) => {
@@ -50,33 +37,25 @@ const SettingsPage = () => {
   return (
     <div className="h-screen container mx-auto px-4 pt-20 max-w-5xl">
       <div className="space-y-6">
-        {/* Tab Navigation */}
         <div role="tablist" className="tabs tabs-boxed">
           <a
             role="tab"
             className={`tab ${activeTab === "profile" ? "tab-active" : ""}`}
-            onClick={() => setActiveTab("profile")}
+            onClick={() => handleTabClick("profile")}
           >
             Profile
           </a>
           <a
             role="tab"
             className={`tab ${activeTab === "theme" ? "tab-active" : ""}`}
-            onClick={() => setActiveTab("theme")}
+            onClick={() => handleTabClick("theme")}
           >
             Theme
           </a>
           <a
             role="tab"
-            className={`tab ${activeTab === "hiddenChats" ? "tab-active" : ""}`}
-            onClick={() => setActiveTab("hiddenChats")}
-          >
-            Hidden Chats
-          </a>
-          <a
-            role="tab"
             className={`tab ${activeTab === "notifications" ? "tab-active" : ""}`}
-            onClick={() => setActiveTab("notifications")}
+            onClick={() => handleTabClick("notifications")}
           >
             Notifications
             {notifications.filter((n) => !n.read).length > 0 && (
@@ -87,92 +66,32 @@ const SettingsPage = () => {
           </a>
         </div>
 
-        {/* Profile Section */}
         {activeTab === "profile" && (
           <div className="space-y-6">
             <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold">Profile</h2>
-              <p className="text-sm text-base-content/70">Manage your profile information</p>
+              <h2 className="text-lg font-semibold">Profile Settings</h2>
+              <p className="text-sm text-base-content/70">Manage your profile details and preferences.</p>
             </div>
-            <div className="rounded-xl border border-base-300 overflow-hidden bg-base-100 shadow-lg p-6">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="avatar">
-                  <div className="size-20 rounded-full border-2 border-primary overflow-hidden">
-                    <img src={authUser?.profilePic || "/avatar.png"} alt="Profile Picture" className="w-full h-full object-cover" />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-primary">{authUser?.fullName}</h3>
-                  <p className="text-sm text-base-content/70">{authUser?.email}</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-base-content/70">Member Since</label>
-                  <p className="text-base-content">{new Date(authUser?.createdAt).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-base-content/70">Account Status</label>
-                  <p className="text-base-content text-success">Active</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Theme Section */}
-        {activeTab === "theme" && (
-          <div className="space-y-6">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold">Theme</h2>
-              <p className="text-sm text-base-content/70">Choose a theme for your chat interface</p>
-            </div>
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-              {THEMES.map((t) => (
-                <button
-                  key={t}
-                  className={`
-                    group flex flex-col items-center gap-1.5 p-2 rounded-lg transition-colors
-                    ${theme === t ? "bg-base-200" : "hover:bg-base-200/50"}
-                  `}
-                  onClick={() => setTheme(t)}
-                >
-                  <div className="relative h-8 w-full rounded-md overflow-hidden" data-theme={t}>
-                    <div className="absolute inset-0 grid grid-cols-4 gap-px p-1">
-                      <div className="rounded bg-primary"></div>
-                      <div className="rounded bg-secondary"></div>
-                      <div className="rounded bg-accent"></div>
-                      <div className="rounded bg-neutral"></div>
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-medium truncate w-full text-center">
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
-                  </span>
-                </button>
-              ))}
-            </div>
-            {/* Preview Section (Optional, keep if still needed) */}
-            <h3 className="text-lg font-semibold mb-3">Preview</h3>
             <div className="rounded-xl border border-base-300 overflow-hidden bg-base-100 shadow-lg">
-              <div className="p-4 bg-base-200">
-                <div className="max-w-lg mx-auto">
-                  {/* Mock Chat UI */}
-                  <div className="bg-base-100 rounded-xl shadow-sm overflow-hidden">
-                    {/* Chat Header */}
-                    <div className="px-4 py-3 border-b border-base-300 bg-base-100">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-content font-medium">
-                          J
-                        </div>
-                        <div>
-                          <h3 className="font-medium text-sm">John Doe</h3>
-                          <p className="text-xs text-base-content/70">Online</p>
-                        </div>
-                      </div>
+              <div className="p-6 space-y-4">
+                <div className="flex items-center gap-4">
+                <div className="avatar">
+                    <div className="size-24 rounded-full relative">
+                      <img src={authUser?.profilePic || "/avatar.png"} alt="User Avatar" />
                     </div>
+                </div>
+                <div>
+                    <h3 className="text-xl font-bold">{authUser?.fullName}</h3>
+                    <p className="text-sm text-base-content/70">@{authUser?.username}</p>
+                </div>
+                </div>
+              </div>
+            </div>
 
-                    {/* Chat Messages */}
+            <div className="rounded-xl border border-base-300 overflow-hidden bg-base-100 shadow-lg p-6">
+              <h3 className="text-lg font-semibold mb-4">Chat Preview</h3>
+              <div className="flex flex-col gap-4">
+                <div className="chat-bubble-preview-container bg-base-200/50 rounded-xl p-4">
                     <div className="p-4 space-y-4 min-h-[200px] max-h-[200px] overflow-y-auto bg-base-100">
                       {PREVIEW_MESSAGES.map((message) => (
                         <div
@@ -198,8 +117,6 @@ const SettingsPage = () => {
                         </div>
                       ))}
                     </div>
-
-                    {/* Chat Input */}
                     <div className="p-4 border-t border-base-300 bg-base-100">
                       <div className="flex gap-2">
                         <input
@@ -212,7 +129,6 @@ const SettingsPage = () => {
                         <button className="btn btn-primary h-10 min-h-0">
                           <Send size={18} />
                         </button>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -221,45 +137,37 @@ const SettingsPage = () => {
           </div>
         )}
 
-        {/* Hidden Chats Section */}
-        {activeTab === "hiddenChats" && (
+        {activeTab === "theme" && (
           <div className="space-y-6">
             <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold">Hidden Chats</h2>
-              <p className="text-sm text-base-content/70">Chats you have hidden</p>
+              <h2 className="text-lg font-semibold">Theme Settings</h2>
+              <p className="text-sm text-base-content/70">Customize the look and feel of the app.</p>
             </div>
             <div className="rounded-xl border border-base-300 overflow-hidden bg-base-100 shadow-lg p-6">
-              {isLoadingHiddenChats ? (
-                <p className="text-center text-base-content/70">Loading hidden chats...</p>
-              ) : hiddenUsers.length === 0 ? (
-                <p className="text-center text-base-content/70">No hidden chats found.</p>
-              ) : (
-                <div className="space-y-4">
-                  {hiddenUsers.map((user) => (
-                    <div key={user._id} className="flex items-center justify-between p-3 bg-base-200 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="avatar">
-                          <div className="size-10 rounded-full relative">
-                            <img src={user.profilePic || "/avatar.png"} alt={user.fullName} />
-                          </div>
-                        </div>
-                        <h3 className="font-medium">{user.fullName}</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {THEMES.map((t) => (
+                  <div
+                    key={t.name}
+                    onClick={() => setTheme(t.name)}
+                    className={`rounded-lg p-2 flex flex-col items-center justify-center gap-2 cursor-pointer border-2 ${theme === t.name ? "border-primary" : "border-transparent"} transition-colors`}
+                    data-theme={t.name}
+                  >
+                    <div className="size-12 rounded-full flex items-center justify-center text-lg font-bold shadow-md overflow-hidden ring-1 ring-base-content/10">
+                      <div className="w-full h-full flex flex-wrap ">
+                        <div className="w-1/2 h-1/2 bg-primary"></div>
+                        <div className="w-1/2 h-1/2 bg-secondary"></div>
+                        <div className="w-1/2 h-1/2 bg-accent"></div>
+                        <div className="w-1/2 h-1/2 bg-neutral"></div>
                       </div>
-                      <button
-                        onClick={() => handleUnhideChat(user._id)}
-                        className="btn btn-sm btn-primary"
-                      >
-                        Unhide
-                      </button>
+                    </div>
+                    <span className="text-sm capitalize text-base-content/80">{t.name}</span>
                     </div>
                   ))}
                 </div>
-              )}
             </div>
           </div>
         )}
 
-        {/* Notifications Section */}
         {activeTab === "notifications" && (
           <div className="space-y-6">
             <div className="flex flex-col gap-1">

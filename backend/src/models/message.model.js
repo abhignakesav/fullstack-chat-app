@@ -22,11 +22,6 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    hiddenFor: {
-      type: Map,
-      of: Boolean,
-      default: new Map(),
-    },
   },
   { timestamps: true }
 );

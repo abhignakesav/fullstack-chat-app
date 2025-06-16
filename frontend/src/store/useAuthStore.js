@@ -134,4 +134,24 @@ export const useAuthStore = create((set, get) => ({
       toast.error("Failed to mark notification as read.");
     }
   },
+
+  markAllNotificationsAsRead: async () => {
+    try {
+      const { notifications } = get();
+      const unreadNotifications = notifications.filter((n) => !n.read);
+
+      if (unreadNotifications.length > 0) {
+        // You might want a batch API endpoint for this if performance is an issue
+        // For now, we'll call markNotificationAsRead for each unread notification
+        await Promise.all(
+          unreadNotifications.map(async (n) => {
+            await get().markNotificationAsRead(n._id);
+          })
+        );
+      }
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      toast.error("Failed to mark all notifications as read.");
+    }
+  },
 }));

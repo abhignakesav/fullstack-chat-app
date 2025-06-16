@@ -1,6 +1,6 @@
 import { useChatStore } from "../store/useChatStore";
 import { useEffect, useRef, useState } from "react";
-import { MoreVertical, Trash2, EyeOff, AlertTriangle } from "lucide-react";
+import { MoreVertical, Trash2, AlertTriangle } from "lucide-react";
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
@@ -19,7 +19,6 @@ const ChatContainer = () => {
     unsubscribeFromMessages,
     deleteMessage,
     deleteChat,
-    hideChat,
     markMessagesAsRead,
   } = useChatStore();
   const { authUser } = useAuthStore();
@@ -31,7 +30,6 @@ const ChatContainer = () => {
   useEffect(() => {
     getMessages(selectedUser._id);
     subscribeToMessages();
-    // Mark messages as read when chat is opened
     markMessagesAsRead(selectedUser._id);
     return () => unsubscribeFromMessages();
   }, [selectedUser._id, getMessages, subscribeToMessages, unsubscribeFromMessages, markMessagesAsRead]);
@@ -62,15 +60,8 @@ const ChatContainer = () => {
 
   const confirmDelete = async () => {
     try {
-      switch (deleteType) {
-        case 'chat':
-          await deleteChat(selectedUser._id);
-          break;
-        case 'hide':
-          await hideChat(selectedUser._id);
-          break;
-        default:
-          break;
+      if (deleteType === 'chat') {
+        await deleteChat(selectedUser._id);
       }
     } catch (error) {
       console.error('Error deleting chat:', error);
@@ -112,13 +103,6 @@ const ChatContainer = () => {
             </button>
             {showMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-base-100 rounded-lg shadow-lg border border-base-300 z-10">
-                <button
-                  onClick={() => handleDelete('hide')}
-                  className="w-full px-4 py-2 text-left hover:bg-base-200 flex items-center gap-2"
-                >
-                  <EyeOff size={16} />
-                  Hide Chat
-                </button>
                 <button
                   onClick={() => handleDelete('chat')}
                   className="w-full px-4 py-2 text-left hover:bg-base-200 text-error flex items-center gap-2"
@@ -208,9 +192,7 @@ const ChatContainer = () => {
               <h3 className="text-lg font-semibold">Confirm Deletion</h3>
             </div>
             <p className="mb-6">
-              {deleteType === 'chat'
-                ? "Are you sure you want to delete this chat? This action cannot be undone."
-                : "Are you sure you want to hide this chat? You can unhide it later from your profile."}
+              Are you sure you want to delete this chat? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-3">
               <button
@@ -221,9 +203,9 @@ const ChatContainer = () => {
               </button>
               <button
                 onClick={confirmDelete}
-                className={`btn ${deleteType === 'chat' ? 'btn-error' : 'btn-primary'}`}
+                className="btn btn-error"
               >
-                {deleteType === 'chat' ? 'Delete' : 'Hide'}
+                Delete
               </button>
             </div>
           </div>

@@ -22,6 +22,7 @@ export const getUsersForSidebar = async (req, res) => {
 
         return {
           ...user.toObject(),
+          lastMessage: lastMessage ? lastMessage.toObject() : null,
           lastMessageTimestamp: lastMessage ? lastMessage.createdAt : null,
         };
       })

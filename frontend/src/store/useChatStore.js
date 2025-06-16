@@ -38,6 +38,25 @@ export const useChatStore = create((set, get) => ({
     try {
       const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
       set({ messages: [...messages, res.data] });
+
+      // Update users list order in real-time after sending a message
+      set((state) => {
+        const otherUserId = selectedUser._id; // The receiver of the sent message
+        const updatedUsers = state.users.map((user) =>
+          user._id === otherUserId
+            ? { ...user, lastMessageTimestamp: new Date(res.data.createdAt) }
+            : user
+        );
+
+        updatedUsers.sort((a, b) => {
+          if (!a.lastMessageTimestamp && !b.lastMessageTimestamp) return 0;
+          if (!a.lastMessageTimestamp) return 1;
+          if (!b.lastMessageTimestamp) return -1;
+          return new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime();
+        });
+        return { users: updatedUsers };
+      });
+
     } catch (error) {
       toast.error(error.response.data.message);
     }
@@ -108,39 +127,6 @@ export const useChatStore = create((set, get) => ({
       toast.success("Chat deleted successfully");
     } catch (error) {
       toast.error(error.response.data.message);
-    }
-  },
-
-  hideChat: async (userId) => {
-    try {
-      await axiosInstance.post(`/messages/hide/${userId}`);
-      set((state) => ({
-        selectedUser: null,
-      }));
-      toast.success("Chat hidden successfully");
-      get().getUsers();
-    } catch (error) {
-      toast.error(error.response.data.message);
-    }
-  },
-
-  unhideChat: async (userId) => {
-    try {
-      await axiosInstance.post(`/messages/unhide/${userId}`);
-      toast.success("Chat unhidden successfully");
-      // Optionally, refresh users or update state to show the unhidden chat
-    } catch (error) {
-      toast.error(error.response.data.message);
-    }
-  },
-
-  getHiddenChats: async () => {
-    try {
-      const res = await axiosInstance.get("/messages/hidden-chats");
-      return res.data;
-    } catch (error) {
-      toast.error(error.response.data.message);
-      return [];
     }
   },
 
