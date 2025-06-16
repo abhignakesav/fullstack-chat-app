@@ -105,7 +105,7 @@ const ChatContainer = () => {
           <div className="flex items-center gap-3">
             <div className="avatar">
               <div className="size-10 rounded-full relative">
-                {selectedChatType === "user" ? (
+                {selectedChat && selectedChatType === "user" ? (
                   <img src={selectedChat.profilePic || "/avatar.png"} alt={selectedChat.fullName} />
                 ) : (
                   <div className="size-10 rounded-full bg-base-200 flex items-center justify-center">
