@@ -10,11 +10,16 @@ export const searchUsers = async (req, res) => {
       return res.status(400).json({ error: "Search query is required" });
     }
 
-    // Search users by username only, excluding the current user
+    // Search users by username or email, excluding the current user
     const users = await User.find({
       $and: [
         { _id: { $ne: currentUserId } },
-        { username: { $regex: query, $options: "i" } }
+        {
+          $or: [
+            { username: { $regex: query, $options: "i" } },
+            { email: { $regex: query, $options: "i" } }
+          ]
+        }
       ]
     }).select("-password");
 
