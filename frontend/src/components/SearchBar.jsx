@@ -24,7 +24,7 @@ const SearchBar = () => {
         <IoSearch className="text-gray-500 dark:text-gray-400 text-xl" />
         <input
           type="text"
-          placeholder="Search users or groups..."
+          placeholder="Search by username or group name..."
           className="bg-transparent border-none outline-none w-full text-gray-700 dark:text-gray-300"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -74,9 +74,6 @@ const SearchBar = () => {
                       <div>
                         <p className="font-medium text-gray-900 dark:text-gray-100">
                           {user.username}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {user.email}
                         </p>
                       </div>
                     </div>
