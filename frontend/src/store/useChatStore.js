@@ -13,6 +13,11 @@ const initialState = {
   isUsersLoading: false,
   isMessagesLoading: false,
   isGroupsLoading: false,
+  searchResults: {
+    users: [],
+    groups: []
+  },
+  isSearching: false
 };
 
 export const useChatStore = create(
@@ -310,6 +315,56 @@ export const useChatStore = create(
           console.error("Error marking messages as read:", error);
           toast.error("Failed to mark messages as read");
         }
+      },
+
+      searchUsers: async (query) => {
+        if (!query.trim()) {
+          set({ searchResults: { users: [], groups: [] } });
+          return;
+        }
+
+        set({ isSearching: true });
+        try {
+          const res = await axiosInstance.get(`/users/search?query=${encodeURIComponent(query)}`);
+          set((state) => ({
+            searchResults: {
+              ...state.searchResults,
+              users: res.data.users
+            }
+          }));
+        } catch (error) {
+          console.error("Error searching users:", error);
+          toast.error(error.response?.data?.message || "Failed to search users");
+        } finally {
+          set({ isSearching: false });
+        }
+      },
+
+      searchGroups: async (query) => {
+        if (!query.trim()) {
+          set({ searchResults: { users: [], groups: [] } });
+          return;
+        }
+
+        set({ isSearching: true });
+        try {
+          const res = await axiosInstance.get(`/users/search/groups?query=${encodeURIComponent(query)}`);
+          set((state) => ({
+            searchResults: {
+              ...state.searchResults,
+              groups: res.data.groups
+            }
+          }));
+        } catch (error) {
+          console.error("Error searching groups:", error);
+          toast.error(error.response?.data?.message || "Failed to search groups");
+        } finally {
+          set({ isSearching: false });
+        }
+      },
+
+      clearSearchResults: () => {
+        set({ searchResults: { users: [], groups: [] } });
       },
     }),
     { name: "chat-store" }

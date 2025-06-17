@@ -6,6 +6,7 @@ import { Users, PlusCircle, Group as GroupIcon } from "lucide-react";
 import { formatMessageTime } from "../lib/utils";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
+import SearchBar from "./SearchBar";
 
 const Sidebar = () => {
   const { getUsers, users, getGroups, groups, selectedChat, setSelectedChat, isUsersLoading, isGroupsLoading } = useChatStore();
@@ -74,6 +75,9 @@ const Sidebar = () => {
         <div className="flex items-center gap-2">
           <Users className="size-6" />
           <span className="font-medium hidden lg:block">Contacts</span>
+        </div>
+        <div className="mt-3 hidden lg:block">
+          <SearchBar />
         </div>
         <div className="mt-3 hidden lg:flex items-center gap-2">
           <label className="cursor-pointer flex items-center gap-2">
