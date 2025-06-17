@@ -9,6 +9,9 @@ const ChatHeader = () => {
   const { onlineUsers } = useAuthStore();
   const [showGroupMembersModal, setShowGroupMembersModal] = useState(false);
 
+  // Add this log to verify selectedChatType immediately
+  console.log("ChatHeader (initial render) - selectedChatType:", selectedChatType);
+
   if (!selectedChat) {
     return null;
   }

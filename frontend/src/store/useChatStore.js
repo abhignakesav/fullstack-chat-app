@@ -326,6 +326,7 @@ export const useChatStore = create(
         set({ isSearching: true });
         try {
           const res = await axiosInstance.get(`/users/search?query=${encodeURIComponent(query)}`);
+          console.log("Search results:", res.data);
           set((state) => ({
             searchResults: {
               ...state.searchResults,
@@ -349,6 +350,7 @@ export const useChatStore = create(
         set({ isSearching: true });
         try {
           const res = await axiosInstance.get(`/users/search/groups?query=${encodeURIComponent(query)}`);
+          console.log("Group search results:", res.data);
           set((state) => ({
             searchResults: {
               ...state.searchResults,
